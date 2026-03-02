@@ -12,16 +12,13 @@ Lightweight service monitoring app built with FastAPI, SQLite, and a minimal aut
 - Addition of services (single or JSON file)
 
 ## Quickstart (local)
-1. Create project folders exactly as shown in the structure.
-2. Put the file contents into the matching files.
-3. Create a virtual environment:
+1. Create a virtual environment:
    - `python -m venv .venv`
    - Linux/macOS: `source .venv/bin/activate`
-   - Windows PowerShell: `.venv\\Scripts\\Activate.ps1`
-4. Install dependencies: `pip install -r requirements.txt`
-5. Update `data/services.json` with real service URLs and expected versions.
-6. Run the app: `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
-7. Open `http://localhost:8000`
+   - Windows PowerShell: `.venv/bin/activate`
+2. Install dependencies: `pip install -r requirements.txt`
+3. Run the app: `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+4. Open `http://localhost:8000`
 
 ## Quickstart (Docker)
 1. Build image: `docker build -t service-reliability-monitor .`
@@ -30,23 +27,14 @@ Lightweight service monitoring app built with FastAPI, SQLite, and a minimal aut
 
 ## API
 - GET /
-
 - GET /api/health
-
 - GET /api/config/services
-
 - POST /api/services
-
 - POST /api/services/import
-
 - GET /api/services/latest
-
 - GET /api/services/history/{service_name}
-
 - DELETE /api/services/{service_name}
-
 - GET /api/export/checks.csv
-
 - GET /api/incidents/summary
 
 ## Persistence and why it is lightweight
