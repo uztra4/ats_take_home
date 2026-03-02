@@ -59,6 +59,7 @@ This gives a practical production stack: reverse proxy + containerized FastAPI s
 ## Improvements
 - AI review summary 
 - Filter on the tables
+- Graph to detail the history of the failures and availability as well as traffic like Datadog
 
 ## AI usage
 - Assist with the architecture brainstorm
