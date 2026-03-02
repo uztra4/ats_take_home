@@ -1,0 +1,26 @@
+[
+  {
+    "name": "example-prod-api",
+    "url": "https://httpbin.org/status/200",
+    "expected_version": "1.2.0",
+    "environment": "production"
+  },
+  {
+    "name": "example-prod-json",
+    "url": "https://httpbin.org/json",
+    "expected_version": "1.0.0",
+    "environment": "production"
+  },
+  {
+    "name": "example-staging-404",
+    "url": "https://httpbin.org/status/404",
+    "expected_version": "0.9.1",
+    "environment": "staging"
+  },
+  {
+    "name": "test",
+    "url": "www.test.com",
+    "expected_version": "1.0.0",
+    "environment": "production"
+  }
+]

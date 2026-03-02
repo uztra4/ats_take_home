@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Service Reliability Monitor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+    .main-content {
+      flex: 1;
+      padding: 24px;
+      min-width: 0;
+    }
+    .sidebar {
+      width: 320px;
+      background: #1e293b;
+      padding: 20px;
+      border-left: 1px solid #334155;
+      max-height: 100vh;
+      overflow-y: auto;
+      transition: transform 0.3s ease, width 0.3s ease;
+      flex-shrink: 0;
+    }
+    .sidebar.collapsed {
+      transform: translateX(100%);
+      width: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    .sidebar-toggle {
+      position: fixed;
+      right: 24px;
+      top: 24px;
+      background: #2563eb;
+      border: none;
+      color: #e2e8f0;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transition: background 0.2s ease;
+    }
+    .sidebar-toggle:hover {
+      background: #1d4ed8;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .card, .table-card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      margin-bottom: 20px;
+    }
+    .metric {
+      font-size: 28px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+    .env-title {
+      margin: 20px 0 12px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #e2e8f0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 8px;
+      border-bottom: 1px solid #334155;
+      vertical-align: top;
+    }
+    .download-btn {
+      display: inline-block;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .download-btn:hover {
+      background: #1d4ed8;
+    }
+    .healthy { background: #14532d; color: #bbf7d0; }
+    .degraded { background: #78350f; color: #fde68a; }
+    .down { background: #7f1d1d; color: #fecaca; }
+    .drift { color: #fca5a5; font-weight: bold; }
+    .muted { color: #94a3b8; font-size: 12px; }
+    a { color: #93c5fd; text-decoration: none; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    input, select, button {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #e2e8f0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      cursor: pointer;
+      background: #2563eb;
+      border: none;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    .delete-btn {
+      background: #dc2626;
+      padding: 6px 10px;
+      font-size: 12px;
+      width: auto;
+    }
+    .delete-btn:hover {
+      background: #b91c1c;
+    }
+    .message {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    .success { color: #86efac; }
+    .error { color: #fca5a5; }
+    .small-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .section-divider {
+      border-top: 1px solid #334155;
+      margin: 16px 0;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100vh;
+        box-shadow: -4px 0 12px rgba(0,0,0,0.3);
+      }
+      .sidebar-toggle {
+        right: 16px;
+        top: 16px;
+      }
+      .metric {
+        font-size: 28px;
+        font-weight: bold;
+        margin-top: 8px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="main-content">
+      <div class="header">
+        <div>
+          <h1>Service Reliability Monitor</h1>
+          <div class="muted">Auto-refresh every 15 seconds</div>
+        </div>
+
+        <div style="display:flex; gap:12px; align-items:center;">
+          <a href="/api/export/checks.csv" class="download-btn">Download CSV</a>
+          <div id="lastUpdated" class="muted"></div>
+        </div>
+      </div>
+      <!-- <div class="form-card" style="margin-bottom: 16px;">
+        <div class="small-title">Recent Incident Summary</div>
+        <div id="incidentSummary" style="line-height: 1.6;">
+          Loading summary...
+        </div>
+      </div> -->
+
+      <div id="summary" class="cards"></div>
+      <div id="content"></div>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+      <div class="small-title">Add Single Service</div>
+      <form id="serviceForm">
+        <div class="form-grid">
+          <input id="serviceName" name="name" placeholder="Service Name" required />
+          <input id="serviceUrl" name="url" placeholder="Service URL" required />
+          <input id="serviceVersion" name="expected_version" placeholder="Expected Version" required />
+          <select id="serviceEnvironment" name="environment" required>
+            <option value="">Select Environment</option>
+            <option value="production">Production</option>
+            <option value="sandbox">Sandbox</option>
+            <option value="staging">Staging</option>
+          </select>
+          <button type="submit">Add Service</button>
+        </div>
+      </form>
+      <div id="serviceFormMessage" class="message"></div>
+
+      <div class="section-divider"></div>
+
+      <div class="small-title">Import Configuration</div>
+      <div class="muted" style="margin-bottom: 12px;">JSON array or CSV (name, url, expected_version)</div>
+      <div class="form-grid">
+        <input id="configFile" type="file" accept=".json,.csv" />
+        <button type="button" onclick="uploadConfig()">Upload Config</button>
+      </div>
+      <div id="uploadMessage" class="message"></div>
+
+      <div class="section-divider"></div>
+
+      <div class="small-title">Configured Services</div>
+      <div id="configuredServices" style="font-size: 12px;"></div>
+    </div>
+  </div>
+
+  <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Config">⚙️</button>
+
+  <script src="/static/app.js"></script>
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('collapsed');
+    }
+  </script>
+</body>
+</html>
