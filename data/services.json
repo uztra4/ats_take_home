@@ -22,5 +22,11 @@
     "url": "www.test.com",
     "expected_version": "1.0.0",
     "environment": "production"
+  },
+  {
+    "name": "Google",
+    "url": "https://www.google.com",
+    "expected_version": "gws",
+    "environment": "production"
   }
 ]

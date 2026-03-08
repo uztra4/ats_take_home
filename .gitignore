@@ -1,1 +1,4 @@
 .env
+data/monitor.db
+ats_take_home/
+app/__pycache__/
