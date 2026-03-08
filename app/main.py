@@ -23,11 +23,15 @@ from .config_loader import (
 from .database import Base, SessionLocal, engine, get_db
 from .models import ServiceCheck
 from .schemas import ServiceCheckOut
-from fastapi import Query
 from .incident_summary import generate_ai_incident_summary
 from fastapi.responses import StreamingResponse
 from io import StringIO
+from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+from zoneinfo import ZoneInfo
 
+load_dotenv()
+SGT = ZoneInfo("Asia/Singapore")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
@@ -104,7 +108,10 @@ def get_configured_services():
 
 @app.get("/api/services/latest")
 def get_latest_statuses(db: Session = Depends(get_db)):
-    rows = db.query(ServiceCheck).order_by(ServiceCheck.service_name.asc()).all()
+    rows = db.query(ServiceCheck).order_by(
+        ServiceCheck.checked_at.desc(),
+        ServiceCheck.id.desc()
+    ).all()
 
     latest_by_name = {}
     for row in rows:
@@ -113,6 +120,11 @@ def get_latest_statuses(db: Session = Depends(get_db)):
 
     services_list = []
     for row in latest_by_name.values():
+        checked = row.checked_at
+        if checked:
+            # SQLite returns naive datetime; treat it as UTC
+            if checked.tzinfo is None:
+                checked = checked.replace(tzinfo=timezone.utc)
         services_list.append(
             {
                 "service_name": row.service_name,
@@ -125,7 +137,7 @@ def get_latest_statuses(db: Session = Depends(get_db)):
                 "version_drift": row.version_drift,
                 "error_message": row.error_message,
                 "environment": row.environment,
-                "checked_at": row.checked_at.isoformat(),
+                "checked_at": checked.isoformat() if checked else None,
             }
         )
 
@@ -151,7 +163,6 @@ def get_service_history(service_name: str, db: Session = Depends(get_db)):
         .limit(50)
         .all()
     )
-
 
 @app.get("/api/health")
 def healthcheck():
@@ -221,5 +232,9 @@ def export_checks_csv(db: Session = Depends(get_db)):
 
 @app.get("/api/incidents/summary")
 def get_incident_summary(db: Session = Depends(get_db)):
-    summary = generate_ai_incident_summary(db, hours=1)
-    return {"summary": summary}
+    try:
+        summary = generate_ai_incident_summary(db, hours=1)
+        return {"summary": summary}
+    except Exception as exc:
+        # important: always return JSON so the frontend can parse it
+        return JSONResponse(status_code=500, content={"detail": str(exc)})
