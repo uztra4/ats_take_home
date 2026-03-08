@@ -27,6 +27,9 @@ from fastapi import Query
 from .incident_summary import generate_ai_incident_summary
 from fastapi.responses import StreamingResponse
 from io import StringIO
+from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -221,5 +224,9 @@ def export_checks_csv(db: Session = Depends(get_db)):
 
 @app.get("/api/incidents/summary")
 def get_incident_summary(db: Session = Depends(get_db)):
-    summary = generate_ai_incident_summary(db, hours=1)
-    return {"summary": summary}
+    try:
+        summary = generate_ai_incident_summary(db, hours=1)
+        return {"summary": summary}
+    except Exception as exc:
+        # important: always return JSON so the frontend can parse it
+        return JSONResponse(status_code=500, content={"detail": str(exc)})

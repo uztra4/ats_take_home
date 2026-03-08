@@ -258,19 +258,22 @@ async function uploadConfig() {
 }
 
 async function loadIncidentSummary() {
-  const container = document.getElementById('incidentSummary');
+  const el = document.getElementById('incidentSummary');
+  if (!el) return;
 
   try {
-    const response = await fetch('/api/incidents/summary');
-    const data = await response.json();
+    const res = await fetch('/api/incidents/summary');
 
-    if (!response.ok) {
-      throw new Error(data.detail || 'Failed to load incident summary');
-    }
+    // read as text first, then parse JSON safely
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { throw new Error(text); }
 
-    container.textContent = data.summary;
+    if (!res.ok) throw new Error(data.detail || 'Failed to load incident summary');
+
+    el.textContent = data.summary;
   } catch (err) {
-    container.textContent = `Failed to load incident summary: ${err.message}`;
+    el.textContent = `Failed to load incident summary: ${err.message}`;
   }
 }
 
