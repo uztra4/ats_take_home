@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 CHECK_INTERVAL_SECONDS = 30
 REQUEST_TIMEOUT_SECONDS = 10
 FAILURE_ALERT_THRESHOLD = 3
-
-ALERT_MODE = os.getenv("ALERT_MODE", "console") 
-ALERT_WEBHOOK_URL = os.getenv("ALERT_WEBHOOK_URL", "")
+ALERT_MODE=os.getenv("ALERT_MODE", "")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
 _failure_streaks: dict[str, int] = {}
 _alert_sent: dict[str, bool] = {}
@@ -124,37 +124,41 @@ async def send_console_alert(service_name: str, result: dict, failures: int):
     )
 
 
-async def send_webhook_alert(client: httpx.AsyncClient, service_name: str, result: dict, failures: int):
-    if not ALERT_WEBHOOK_URL:
-        logger.warning("Webhook alert skipped because ALERT_WEBHOOK_URL is empty")
+async def send_telegram_alert(client: httpx.AsyncClient, service_name: str, result: dict, failures: int):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        logger.warning("Telegram alert skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID missing")
         return
 
+    text = (
+        f"🚨 Service Alert\n"
+        f"Service: {service_name}\n"
+        f"Status: {result['status']} (failures={failures})\n"
+        f"URL: {result['url']}\n"
+        f"HTTP: {result.get('status_code')}\n"
+        f"Latency: {result.get('latency_ms')} ms\n"
+        f"Expected: {result.get('expected_version')}\n"
+        f"Observed: {result.get('observed_version')}\n"
+        f"Drift: {result.get('version_drift')}\n"
+        f"Error: {result.get('error_message')}\n"
+        f"Time: {result.get('checked_at')}\n"
+    )
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
-        "service_name": service_name,
-        "status": result["status"],
-        "failures": failures,
-        "url": result["url"],
-        "latency_ms": result["latency_ms"],
-        "error_message": result["error_message"],
-        "checked_at": result["checked_at"].isoformat() if result["checked_at"] else None,
-        "expected_version": result["expected_version"],
-        "observed_version": result["observed_version"],
-        "version_drift": result["version_drift"],
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+        "disable_web_page_preview": True,
     }
 
-    try:
-        response = await client.post(ALERT_WEBHOOK_URL, json=payload)
-        response.raise_for_status()
-        logger.info("Webhook alert sent for %s", service_name)
-    except Exception as exc:
-        logger.exception("Failed to send webhook alert for %s: %s", service_name, exc)
+    resp = await client.post(url, json=payload, timeout=10)
+    resp.raise_for_status()
 
 
 async def trigger_alert(client: httpx.AsyncClient, service_name: str, result: dict, failures: int):
     if ALERT_MODE == "none":
         return
     if ALERT_MODE == "webhook":
-        await send_webhook_alert(client, service_name, result, failures)
+        await send_telegram_alert(client, service_name, result, failures)
         return
 
     await send_console_alert(service_name, result, failures)
